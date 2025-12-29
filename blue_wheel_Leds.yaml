@@ -36,6 +36,21 @@ logger:
 api:
   encryption:
     key: "JVMKWt6yFfphJLHR22IYd5LOPI32I1oHHCaVJ/FkXHI="
+  id: my_api
+  on_client_connected: 
+    then:
+      - lambda: |-
+                {
+                  lv_led_set_color(id(ha_led), lv_color_hex(0x00ff00));
+                  lv_obj_add_flag(id(busy_spinner), LV_OBJ_FLAG_HIDDEN);
+                }
+  on_client_disconnected: 
+    then:
+      - lambda: |-
+                {
+                  lv_led_set_color(id(ha_led), lv_color_hex(0x00ff00));
+                }
+          
 
 ota:
   - platform: esphome
@@ -101,81 +116,6 @@ globals:
     initial_value: '0'
     restore_value: true
 
-switch:
-  - platform: template
-    name: Antiburn
-    id: switch_antiburn
-    icon: mdi:television-shimmer
-    optimistic: true
-    entity_category: "config"
-    turn_on_action:
-      - logger.log: "Starting Antiburn"
-      - if:
-          condition: lvgl.is_paused
-          then:
-            - lvgl.resume:
-            - lvgl.widget.redraw:
-      - lvgl.pause:
-          show_snow: true
-    turn_off_action:
-      - logger.log: "Stopping Antiburn"
-      - if:
-          condition: lvgl.is_paused
-          then:
-            - lvgl.resume:
-            - lvgl.widget.redraw:
-  
-  - platform: lvgl
-    name: "Living 1 Switch"
-    id: living_1_switch
-    widget: led_1_switch_widget
-    on_turn_on: 
-      then:
-        - script.execute:
-            id: set_switch_state
-            switch_index: 0
-            operation: true
-    on_turn_off: 
-      then:
-        - script.execute:
-            id: set_switch_state
-            switch_index: 0
-            operation: false
-  
-  - platform: lvgl
-    name: "Living 2 Switch"
-    id: living_2_switch
-    widget: led_2_switch_widget
-    on_turn_on: 
-      then:
-        - script.execute:
-            id: set_switch_state
-            switch_index: 1
-            operation: true
-    on_turn_off: 
-      then:
-        - script.execute:
-            id: set_switch_state
-            switch_index: 1
-            operation: false 
-
-  - platform: lvgl
-    name: "Living 3 Switch"
-    id: living_3_switch
-    widget: led_3_switch_widget
-    on_turn_on: 
-      then:
-        - script.execute:
-            id: set_switch_state
-            switch_index: 2
-            operation: true
-    on_turn_off: 
-      then:
-        - script.execute:
-            id: set_switch_state
-            switch_index: 2
-            operation: false
-
 touchscreen:
   platform: cst816
   id: my_touchscreen
@@ -200,6 +140,32 @@ light:
     initial_state:
       brightness: 70%
     restore_mode: ALWAYS_ON
+
+  - platform: lvgl
+    name: "Living One"
+    id: living_1_light
+    widget: led_indicator_1
+    # widget: led_indicator_1
+    # red: living_1_red
+    # green: living_1_green
+    # blue: living_1_blue
+    # cold_white: living_1_cold_white
+    # warm_white: living_1_warm_white
+    default_transition_length: 500ms
+    on_turn_on:
+      then:
+        - lambda: |-
+                  {
+                    lv_obj_add_state(id(led_1_switch_widget), LV_STATE_CHECKED);
+                    ESP_LOGD("DEBUG","Living one Light ON from HA");
+                  }
+    on_turn_off:
+      then:
+        - lambda: |-
+                  {
+                    lv_obj_clear_state(id(led_1_switch_widget), LV_STATE_CHECKED);
+                    ESP_LOGD("DEBUG","Living one Light OFF from HA");
+                  }
 
 font:
   - file: "gfonts://Roboto"
@@ -509,84 +475,6 @@ display:
       - delay 120ms
       - [0x29, 0x00]
 
-# Scripts for updating led brightness and cover position with delay
-
-script:
-  - id: update_cover_position
-    mode: restart
-    then:
-      - delay: 500ms
-      - if:
-          condition:
-            lambda: 'return id(cover_update_pending);'
-          then:
-            - logger.log: "Sending cover position to HA"
-            - homeassistant.service:
-                service: cover.set_cover_position
-                data:
-                  entity_id: cover.zaslona_salon
-                data_template:
-                  position: !lambda 'return to_string(id(pending_cover_position));'
-            - lambda: 'id(cover_update_pending) = false;'
-
-  - id: update_led_brightness
-    mode: restart
-    then:
-      - delay: 500ms
-      - if:
-          condition:
-            lambda: 'return id(led_update_pending);'
-          then:
-            - logger.log: "Sending LED brightness to HA"
-            - homeassistant.service:
-                service: light.turn_on
-                data:
-                  entity_id: light.0xa4c1388e095eafba
-                data_template:
-                  brightness_pct: !lambda 'return to_string(id(pending_led_brightness));'
-            - lambda: 'id(led_update_pending) = false;'
-  
-  - id: set_switch_state
-    parameters:
-      switch_index: int # 0 - living_1_switch, 1 - living_2_switch, 2 - living_3_switch
-      operation: bool # true - turn on, false - turn off
-    then:
-      - lambda: |-
-                {
-                  auto active_switch = id(living_1_switch);
-                  if (switch_index >=0 && switch_index < 3) {
-                    if (operation) {
-                      if (switch_index == 0) {
-                        active_switch = id(living_1_switch);
-                        id(living_1_switch)->turn_on();
-                      }
-                      if (switch_index == 1) {
-                        active_switch = id(living_2_switch);
-                        id(living_2_switch)->turn_on();
-                      }
-                      if (switch_index == 2) {
-                        active_switch = id(living_3_switch);
-                        id(living_3_switch)->turn_on();
-                      }
-                      //  ESP_LOGI("INFO","Turning on %s to ON", active_switch->get_name().c_str());            
-                    } else {
-                      if (switch_index == 0) {
-                        active_switch = id(living_1_switch);
-                        id(living_1_switch)->turn_off();
-                      }
-                      if (switch_index == 1) {
-                        active_switch = id(living_2_switch);
-                        id(living_2_switch)->turn_off();
-                      }
-                      if (switch_index == 2) {
-                        active_switch = id(living_3_switch);
-                        id(living_3_switch)->turn_off();
-                      }
-                      // ESP_LOGI("INFO","Turning on %s to OFF", active_switch->get_name().c_str());
-                    }
-                  }
-                }
-
 binary_sensor:
   - platform: gpio
     id: encoder_pin_a
@@ -604,7 +492,7 @@ binary_sensor:
                         }
                         id(encoder_value) = val;
                         float calibrated_value = id(encoder_value) * 9.99;
-                        lv_arc_set_value(id(page_arc), calibrated_value);
+                        //lv_arc_set_value(id(page_arc), calibrated_value);
                         ESP_LOGI("INFO","Anticlockwise : %f", calibrated_value);
                       }
               
@@ -632,7 +520,7 @@ binary_sensor:
                         }
                         id(encoder_value) = val;
                         float calibrated_value = id(encoder_value) * 9.99;
-                        lv_arc_set_value(id(page_arc), calibrated_value);
+                        //lv_arc_set_value(id(page_arc), calibrated_value);
                         ESP_LOGI("INFO","Clockwise : %f", calibrated_value);
                       }
 
@@ -677,25 +565,26 @@ lvgl:
           text: " "
           text_font: roboto_20
           text_color: 0xFFFFFF
+          clickable: false
       
-      - arc:
-            id: page_arc
-            x: 0
-            y: 0
-            width: 360
-            height: 360
-            align: center
-            value: 0
-            min_value: 0
-            max_value: 100
-            adjustable: true
-            arc_width: 30
-            indicator:
-              arc_width: 30
-            start_angle: 135
-            end_angle: 45
-            clickable: false
+      - led:
+          id: ha_led
+          align: bottom_mid
+          y: -30
+          clickable: false
       
+      - spinner:
+          id: busy_spinner
+          align: CENTER
+          y: 95
+          height: 50
+          width: 50
+          spin_time: 1s
+          arc_length: 60deg
+          arc_width: 8
+          indicator:
+            arc_color: 0x18bcf2
+            arc_width: 8
  
   pages:
     # First Page
@@ -710,19 +599,31 @@ lvgl:
             bg_color: 0x000000
             border_width: 0
             pad_all: 0
-
+        
         - switch:
             id: led_1_switch_widget
             width: 150
-            height: 30
-            align: bottom_mid
-        
-        -  led:
+            height: 80
+            align: center
+            on_value:
+              then:
+              - if:
+                  condition:
+                    - lambda: 'return x == 1;'
+                  then:
+                    - light.turn_on: living_1_light
+                    - lambda: 'ESP_LOGI("INFO","Living one ON");'
+                  else:
+                    - light.turn_off: living_1_light
+                    - lambda: 'ESP_LOGI("INFO","Living one OFF");'
+
+        - led:
             id: led_indicator_1
             width: 50
             height: 50
-            align: center
-            y: 20
+            x: -130
+            y: -156
+            align: bottom_mid
             color: 0x00FF00
 
         - label:
@@ -734,9 +635,9 @@ lvgl:
             text_color: 0xFFFFFF
 
       on_swipe_left:
-        - lambda: 'id(current_page) = 4;'
+        - lambda: 'id(current_page) = 2;'
         - lvgl.page.show:
-            id: page_4
+            id: page_2
             animation: OUT_LEFT
 
       on_swipe_right:
@@ -777,86 +678,8 @@ lvgl:
             id: page_1
             animation: OUT_LEFT
       on_swipe_right:
-        - lambda: 'id(current_page) = 3;'
-        - lvgl.page.show:  
-            id: page_3
-            animation: OUT_RIGHT
-
-    # Page 3
-    - id: page_3
-      widgets:
-        - obj:
-            id: background_3
-            x: 0
-            y: 0
-            width: 360
-            height: 360
-            bg_color: 0x000000
-            border_width: 0
-            pad_all: 0
-        
-        - switch:
-            id: led_3_switch_widget
-            width: 150
-            height: 30
-            align: center
-
-        - label:
-            id: page3_label
-            align: top_mid
-            y: 40
-            text: "Page 3"
-            text_font: roboto_32
-            text_color: 0xFFFFFF
-
-      on_swipe_left:
-        - lambda: 'id(current_page) = 2;'
-        - lvgl.page.show:
-            id: page_2
-            animation: OUT_LEFT
-
-      on_swipe_right:
-        - lambda: 'id(current_page) = 4;'
-        - lvgl.page.show:
-            id: page_4
-            animation: OUT_RIGHT
-
-    # Page 4
-    - id: page_4
-      widgets:
-        - obj:
-            id: background_4
-            x: 0
-            y: 0
-            width: 360
-            height: 360
-            bg_color: 0x000000
-            border_width: 0
-            pad_all: 0
-        
-        - switch:
-            id: led_4_switch_widget
-            width: 150
-            height: 30
-            align: center
-
-        - label:
-            id: page4_label
-            align: top_mid
-            y: 40
-            text: "Page 4"
-            text_font: roboto_32
-            text_color: 0xFFFFFF
-
-      on_swipe_left:
-        - lambda: 'id(current_page) = 3;'
-        - lvgl.page.show:
-            id: page_3
-            animation: OUT_LEFT
-
-      on_swipe_right:
         - lambda: 'id(current_page) = 1;'
-        - lvgl.page.show:
+        - lvgl.page.show:  
             id: page_1
             animation: OUT_RIGHT
   
@@ -920,18 +743,6 @@ sensor:
                 snprintf(buf, sizeof(buf), "%d%%", (int)x);
                 return buf;
               }
-
-  - platform: homeassistant
-    id: living_1_state
-    entity_id: light.living_one
-
-  - platform: homeassistant
-    id: living_2_state
-    entity_id: light.living_two
-  
-  - platform: homeassistant
-    id: living_3_state
-    entity_id: light.living_three
   
     
               
