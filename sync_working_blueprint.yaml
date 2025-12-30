@@ -55,14 +55,14 @@ action:
           data:
             rgb_color: '{{ state_attr(trigger.to_state.entity_id, "rgb_color") }}'
             brightness: '{{ state_attr(trigger.to_state.entity_id, "brightness") }}'
-            entity_id: >
+            entity_id: '
                         {% if trigger.from_state.entity_id == entity_1 %} {{ entity_2 }}
                         {% elif trigger.from_state.entity_id == entity_2 %} {{ entity_3 }}
-                        {% else %} {{ entity_1 }} {% endif %}
+                        {% else %} {{ entity_1 }} {% endif %}'
   default:
   - service: light.turn_off
     target:
-      entity_id: >
+      entity_id: '
                   {% if trigger.from_state.entity_id == entity_1 %} {{ entity_2 }}
                   {% elif trigger.from_state.entity_id == entity_2 %} {{ entity_3 }}
-                  {% else %} {{ entity_1 }} {% endif %}
+                  {% else %} {{ entity_1 }} {% endif %}'
