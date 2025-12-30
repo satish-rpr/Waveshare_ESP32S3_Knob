@@ -1,0 +1,68 @@
+blueprint:
+  name: Synchronize brightness states and rgb states
+  description: Synchronize the on/off state of 2 entities
+  domain: automation
+  input:
+    entity_1:
+      name: First entity
+      selector:
+        entity: {}
+    entity_2:
+      name: Second entity
+      selector:
+        entity: {}
+    entity_2:
+      name: Third entity
+      selector:
+        entity: {}
+  source_url: https://gist.github.com/creedda/31d391e007b978aed3879fcc1d0fb22c
+mode: restart
+max_exceeded: silent
+variables:
+  entity_1: !input entity_1
+  entity_2: !input entity_2
+  entity_3: !input entity_3
+trigger:
+- platform: state
+  entity_id: !input entity_1
+- platform: state
+  entity_id: !input entity_1
+  attribute: brightness
+- platform: state
+  entity_id: !input entity_1
+  attribute: rgb_color
+  
+- platform: state
+  entity_id: !input entity_2
+- platform: state
+  entity_id: !input entity_2
+  attribute: brightness
+- platform: state
+  entity_id: !input entity_2
+  attribute: rgb_color
+
+-platform: state
+  entity_id: !input entity_3
+  
+condition: []
+action:
+- choose:
+    - conditions:
+        condition: template
+        value_template: "{{ is_state(trigger.to_state.entity_id, 'on') }}"
+      sequence:
+        - service: light.turn_on
+          data:
+            rgb_color: '{{ state_attr(trigger.to_state.entity_id, "rgb_color") }}'
+            brightness: '{{ state_attr(trigger.to_state.entity_id, "brightness") }}'
+            entity_id: >
+                        {% if trigger.from_state.entity_id == entity_1 %} {{ entity_2 }}
+                        {% elif trigger.from_state.entity_id == entity_2 %} {{ entity_3 }}
+                        {% else %} {{ entity_1 }} {% endif %}
+  default:
+  - service: light.turn_off
+    target:
+      entity_id: >
+                  {% if trigger.from_state.entity_id == entity_1 %} {{ entity_2 }}
+                  {% elif trigger.from_state.entity_id == entity_2 %} {{ entity_3 }}
+                  {% else %} {{ entity_1 }} {% endif %}

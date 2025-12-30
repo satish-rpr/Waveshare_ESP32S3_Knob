@@ -138,34 +138,20 @@ light:
     default_transition_length:
       milliseconds: 30
     initial_state:
-      brightness: 70%
+      brightness: 50%
     restore_mode: ALWAYS_ON
 
   - platform: lvgl
     name: "Living One"
     id: living_1_light
     widget: led_indicator_1
-    # widget: led_indicator_1
-    # red: living_1_red
-    # green: living_1_green
-    # blue: living_1_blue
-    # cold_white: living_1_cold_white
-    # warm_white: living_1_warm_white
     default_transition_length: 500ms
-    on_turn_on:
-      then:
-        - lambda: |-
-                  {
-                    lv_obj_add_state(id(led_1_switch_widget), LV_STATE_CHECKED);
-                    ESP_LOGD("DEBUG","Living one Light ON from HA");
-                  }
-    on_turn_off:
-      then:
-        - lambda: |-
-                  {
-                    lv_obj_clear_state(id(led_1_switch_widget), LV_STATE_CHECKED);
-                    ESP_LOGD("DEBUG","Living one Light OFF from HA");
-                  }
+
+switch:
+  - platform: lvgl
+    id: light_1_switch
+    name: "Living 1 switch"
+    widget: living_1_switch_widget
 
 font:
   - file: "gfonts://Roboto"
@@ -484,18 +470,10 @@ binary_sensor:
       allow_other_uses: true
     on_press:
        then:
-            - lambda: |-
-                      {
-                        int val = id(encoder_value) - 1;
-                        if (val < 0) {
-                          val = 0;
-                        }
-                        id(encoder_value) = val;
-                        float calibrated_value = id(encoder_value) * 9.99;
-                        //lv_arc_set_value(id(page_arc), calibrated_value);
-                        ESP_LOGI("INFO","Anticlockwise : %f", calibrated_value);
-                      }
-              
+            - light.turn_on:
+                id: living_1_light
+                brightness: !lambda 'return id(living_1_light).current_values.is_on();'
+             
             - if:
                 condition: lvgl.is_paused
                 then:
@@ -512,17 +490,9 @@ binary_sensor:
       allow_other_uses: true
     on_press:
       then:
-            - lambda: |-
-                      {
-                        int val = id(encoder_value) + 1;
-                        if (val > 100) {
-                          val = 100;
-                        }
-                        id(encoder_value) = val;
-                        float calibrated_value = id(encoder_value) * 9.99;
-                        //lv_arc_set_value(id(page_arc), calibrated_value);
-                        ESP_LOGI("INFO","Clockwise : %f", calibrated_value);
-                      }
+            - light.turn_on:
+                id: living_1_light
+                brightness: !lambda 'return id(living_1_light).current_values.is_on();'
 
             - if:
                 condition: lvgl.is_paused
@@ -605,6 +575,12 @@ lvgl:
             width: 150
             height: 80
             align: center
+            on_boot:
+              - lambda: |-
+                        {
+                          ESP_LOGD("DEBUG", "Currrent state of living light : %d", id(living_1_light).current_values.is_on());
+                        }
+                
             on_value:
               then:
               - if:
@@ -625,6 +601,17 @@ lvgl:
             y: -156
             align: bottom_mid
             color: 0x00FF00
+        
+        - label:
+            id: led_1_brightness_label
+            align_to:
+              id: led_indicator_1
+              align: bottom_mid
+            x: 10
+            y: -15
+            text: "--%"
+            text_font: roboto_32
+            text_color: 0xFFFFFF
 
         - label:
             id: page1_label
@@ -682,6 +669,8 @@ lvgl:
         - lvgl.page.show:  
             id: page_1
             animation: OUT_RIGHT
+
+
   
 sensor:
   - platform: adc
@@ -690,7 +679,7 @@ sensor:
     id: battery_voltage
     attenuation: 12db
     accuracy_decimals: 2
-    update_interval: 1s
+    update_interval: 10s
     unit_of_measurement: "V"
     icon: mdi:battery-medium
     filters:
