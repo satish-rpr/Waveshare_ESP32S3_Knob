@@ -1,6 +1,6 @@
 blueprint:
   name: Synchronize brightness states and rgb states
-  description: Synchronize the on/off state of 2 entities
+  description: Synchronize the on/off state of 3 entities
   domain: automation
   input:
     entity_1:
