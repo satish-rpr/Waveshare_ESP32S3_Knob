@@ -1,0 +1,126 @@
+time:
+  - platform: sntp  # or homeassistant
+    id: time_comp
+    update_interval: 6h
+    timezone: Asia/Kolkata
+    servers:
+      - 0.pool.ntp.org
+      - 1.pool.ntp.org
+    on_time_sync:
+      - script.execute: update_clock
+    on_time:
+      - minutes: '*'
+        seconds: 0
+        then:
+          - script.execute: update_clock
+
+script:
+  - id: update_clock
+    then:
+      - lvgl.indicator.update:
+          id: minute_hand
+          value: !lambda 'return id(time_comp).now().minute;'
+      - lvgl.indicator.update:
+          id: hour_hand
+          value: !lambda |-
+            auto now = id(time_comp).now();
+            return std::fmod(now.hour, 12) * 60 + now.minute;
+      - lvgl.indicator.update:
+          id: second_hand
+          value: !lambda 'return id(time_comp).now().second;'
+
+lvgl:
+  pages:
+    - id: clock_6_page
+      width: 100%
+      bg_color: Black
+      widgets:
+          # Outer Clock Container
+          - obj:
+              height: 360
+              width: 360
+              align: center
+              pad_all: 4
+              bg_color: Black
+              border_width: 0  
+              gesture_bubble: true
+              event_bubble: true
+              clickable: false
+              widgets:
+              - meter:
+                  clickable: false
+                  gesture_bubble: true
+                  height: 100%
+                  width: 100%
+                  align: center
+                  bg_color: Black
+                  scales:
+                    # Minor ticks
+                    - ticks:
+                        width: 2
+                        count: 61
+                        length: 10
+                        color: white
+                      range_from: 0
+                      range_to: 60
+                      angle_range: 360
+                      rotation: 270
+
+                      # Minuite hand
+                      indicators:
+                        - line:
+                            id: minute_hand
+                            width: 3
+                            color: silver
+                            r_mod: -1     
+
+                    # Major ticks
+                    - angle_range: 330
+                      rotation: 300
+                      range_from: 1
+                      range_to: 12
+                      ticks:
+                        width: 3
+                        count: 12
+                        length: 20
+                        color: White  
+
+                    # Hour hand
+                    - angle_range: 360
+                      rotation: 270
+                      range_from: 0
+                      range_to: 720
+                      indicators:
+                        - line:
+                            id: hour_hand
+                            width: 4
+                            color: silver
+                            r_mod: -40
+
+                    # Second hand
+                    - angle_range: 360
+                      rotation: 270
+                      range_from: 0
+                      range_to: 60
+                      indicators:
+                        - line:
+                            id: second_hand
+                            width: 2
+                            color: Red
+                            r_mod: -10
+      on_swipe_left:
+        - lambda: |- 
+                  {
+                    id(current_page) = 5;
+                  }
+        - lvgl.page.show:
+            id: dining_2_page
+            animation: OUT_LEFT
+      on_swipe_right:
+        - lambda: |- 
+                  {
+                    id(current_page) = 1;
+                  }
+        - lvgl.page.show:  
+            id: living_1_page
+            animation: OUT_RIGHT

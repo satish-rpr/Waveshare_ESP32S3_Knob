@@ -1,0 +1,192 @@
+substitutions:
+  name: "blue-wheel"
+  friendly_name: "Blue Wheel"
+  device_description: "Waveshare ESP32S3-1.8-inch "
+  project_name: "myprojects.Project-Blue-Wheel"
+  project_version: "1.0.0"
+
+packages:
+  living.one: !include modules/living/living1.yaml
+  living.two: !include modules/living/living2.yaml
+  living.thee: !include modules/living/living3.yaml
+  dining.one: !include modules/dining/dining1.yaml
+  dining.two: !include modules/dining/dining2.yaml
+  wifi: !include modules/wifi.yaml
+  clock: !include modules/clock/clock.yaml
+  battery: !include modules/battery.yaml
+  backlight: !include modules/backlight.yaml
+  display: !include  modules/display.yaml
+  touchscreen: !include modules/touchscreen.yaml
+  antiburn: !include modules/antiburn.yaml
+  knob: !include modules/knob.yaml
+  fonts: !include modules/fonts.yaml
+  
+esphome:
+  name: "${name}"
+  friendly_name: "${friendly_name}"
+  project:
+    name: "${project_name}"
+    version: "${project_version}"
+  platformio_options:
+    board_build.flash_mode: dio
+    board_build.f_flash: 80000000L
+    board_build.f_cpu: 240000000L
+  
+  # Wait for Home Assistant before boot complete
+  on_boot:
+    priority: 600  # High priority to run early
+    then:
+      - wait_until:
+          condition:
+            api.connected:
+              state_subscription_only: true
+      - logger.log: "Home Assistant connected successfully!"
+      - homeassistant.event:
+          event: esphome.device_booted
+
+esp32:
+  board: esp32-s3-devkitc-1
+  flash_size: 16MB
+  framework:
+    type: esp-idf
+    sdkconfig_options:
+      CONFIG_ESP32S3_DEFAULT_CPU_FREQ_240: "y"
+      CONFIG_ESP32S3_DATA_CACHE_64KB: "y"
+      CONFIG_ESP32S3_DATA_CACHE_LINE_64B: "y"
+      CONFIG_SPIRAM_FETCH_INSTRUCTIONS: y
+      CONFIG_SPIRAM_RODATA: y
+
+psram:
+  mode: octal
+
+logger:
+
+api:
+  encryption:
+    key: "JVMKWt6yFfphJLHR22IYd5LOPI32I1oHHCaVJ/FkXHI="
+  id: my_api
+  on_client_connected: 
+    then:
+      - lambda: |-
+                {
+                  lv_led_set_color(id(ha_led), lv_color_hex(0x00ff00));
+                  lv_obj_add_flag(id(busy_spinner), LV_OBJ_FLAG_HIDDEN);
+                  id(ha_connection_status) = true;
+                }
+  on_client_disconnected: 
+    then:
+      - lambda: |-
+                {
+                  lv_led_set_color(id(ha_led), lv_color_hex(0x00ff00));
+                  id(ha_connection_status) = false;
+                }         
+
+ota:
+  - platform: esphome
+
+spi:
+  id: display_qspi
+  type: quad
+  clk_pin: 13
+  data_pins: [15, 16, 17, 18]
+
+i2c:
+  sda: 11
+  scl: 12
+  id: touchscreen_bus
+
+globals:
+  - id: current_page
+    type: int
+    restore_value: no
+    initial_value: '1'
+  - id: ha_connection_status
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  
+lvgl:
+  on_idle:
+    - timeout: 30s
+      then:
+        - light.turn_off:
+            id: display_backlight
+            transition_length: 3s
+        - lvgl.pause:
+            show_snow: true
+
+  on_resume:
+   - light.turn_on:
+      id: display_backlight
+      transition_length: 1s
+
+  resume_on_input: true
+  
+  displays: 
+    - my_display
+
+  top_layer:
+    widgets:
+      - label:
+          id: battery_percentage_label
+          align: bottom_mid
+          y: -10
+          text: " "
+          text_font: roboto_20
+          text_color: 0xFFFFFF
+          clickable: false
+      
+      - led:
+          id: ha_led
+          align: bottom_mid
+          y: -30
+          clickable: false
+      
+      - spinner:
+          id: busy_spinner
+          align: CENTER
+          y: 95
+          height: 50
+          width: 50
+          spin_time: 1s
+          arc_length: 60deg
+          arc_width: 8
+          indicator:
+            arc_color: 0x18bcf2
+            arc_width: 8
+ 
+  pages:
+    # Page 1
+    - id: !extend living_1_page
+    
+    # Page 2
+    - id: !extend living_2_page
+
+    # Page 3
+    - id: !extend living_3_page
+
+    # Page 4
+    - id: !extend dining_1_page
+    
+    # Page 5
+    - id: !extend dining_2_page
+    
+    # Page 6 - clock
+    - id: !extend clock_6_page
+  
+interval:
+  - interval: 1s
+    then:
+      - if:
+          condition:
+            - lvgl.page.is_showing: clock_6_page
+          then:
+            - lvgl.indicator.update:
+                id: second_hand
+                value: !lambda 'return id(time_comp).now().second;'
+
+
+  
+  
+    
+              

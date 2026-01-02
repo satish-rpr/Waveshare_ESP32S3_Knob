@@ -1,0 +1,16 @@
+output:
+  - platform: ledc
+    pin:
+      number: GPIO47
+    id: backlight_pwm
+    
+light:
+  - platform: monochromatic
+    id: display_backlight
+    name: "Backlight"
+    output: backlight_pwm
+    default_transition_length:
+      milliseconds: 30
+    initial_state:
+      brightness: 50%
+    restore_mode: ALWAYS_ON

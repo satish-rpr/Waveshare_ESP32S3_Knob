@@ -1,0 +1,18 @@
+touchscreen:
+  platform: cst816
+  id: my_touchscreen
+  interrupt_pin: GPIO9
+  reset_pin: GPIO10
+  on_touch:
+      then:
+        - logger.log:
+            format: "Touch at (%d, %d)"
+            args: [touch.x, touch.y]
+  on_release:
+    - if:
+        condition: lvgl.is_paused
+        then:
+          - logger.log: "LVGL resuming from touch"
+          - lvgl.resume:
+          - lvgl.widget.redraw:
+          - light.turn_on: display_backlight

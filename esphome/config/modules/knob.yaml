@@ -1,0 +1,53 @@
+binary_sensor:
+  - platform: gpio
+    id: encoder_pin_a
+    pin:
+      number: GPIO7
+      mode: INPUT_PULLUP
+    on_press:
+       then:
+            - light.dim_relative:
+                id: living_1_light
+                relative_brightness: -10%
+                brightness_limits:
+                  min_brightness: 10%
+                  max_brightness: 100%
+             
+            - if:
+                condition:
+                  or:
+                  - lvgl.is_paused
+                  - light.is_off: display_backlight
+                then:
+                  - logger.log: "LVGL resuming from encoder"
+                  - lvgl.resume:
+                  - lvgl.widget.redraw:
+                  - light.turn_on: display_backlight
+
+  - platform: gpio
+    id: encoder_pin_b
+    pin:
+      number: GPIO8
+      mode: INPUT_PULLUP
+    on_press:
+      then:
+            - light.dim_relative:
+                id: living_1_light
+                relative_brightness: 10%
+                brightness_limits:
+                  min_brightness: 10%
+                  max_brightness: 100%
+
+            - if:
+                condition: 
+                  or:
+                  - lvgl.is_paused
+                  - light.is_off: display_backlight
+                then:
+                  - logger.log: "LVGL resuming from encoder"
+                  - lvgl.resume:
+                  - lvgl.widget.redraw:
+                  - light.turn_on: display_backlight
+  
+  - platform: status
+    name: "Device status"

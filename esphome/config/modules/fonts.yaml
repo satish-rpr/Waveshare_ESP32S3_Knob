@@ -1,0 +1,16 @@
+font:
+  - file: "gfonts://Roboto"
+    id: roboto_20
+    size: 20
+    glyphsets:
+      - GF_Latin_Core
+  - file: "gfonts://Roboto"
+    id: roboto_32
+    size: 32
+    glyphsets:
+      - GF_Latin_Core
+  - file: "gfonts://Roboto"
+    id: roboto_88
+    size: 88
+    glyphsets:
+      - GF_Latin_Core   

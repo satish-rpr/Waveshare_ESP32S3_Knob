@@ -1,0 +1,84 @@
+light:
+  - platform: lvgl
+    name: "Living One"
+    id: living_1_light
+    widget: living_1_led_indicator
+    default_transition_length: 0ms
+
+switch:
+  - platform: lvgl
+    id: living_1_switch
+    name: "Living 1 switch"
+    widget: living_led_1_switch_widget
+
+lvgl:
+  pages:
+    # First Page
+    - id: living_1_page
+      widgets:
+        - obj:
+            id: background_1
+            x: 0
+            y: 0
+            width: 360
+            height: 360
+            bg_color: 0x000000
+            border_width: 0
+            pad_all: 0
+        
+        - switch:
+            id: living_led_1_switch_widget
+            width: 150
+            height: 80
+            align: center
+            on_value:
+              then:
+              - if:
+                  condition:
+                    - lambda: 'return x == 1;'
+                  then:
+                    - light.turn_on: living_1_light
+                    - lambda: 'ESP_LOGI("INFO","Living one ON");'
+                  else:
+                    - light.turn_off: living_1_light
+                    - lambda: 'ESP_LOGI("INFO","Living one OFF");'
+
+        - led:
+            id: living_1_led_indicator
+            width: 50
+            height: 50
+            x: -130
+            y: -156
+            align: bottom_mid
+            color: 0x00FF00
+        
+        - label:
+            id: living_1_brightness_label
+            align_to:
+              id: living_1_led_indicator
+              align: bottom_mid
+            x: 50
+            y: -20
+            text: "--%"
+            text_font: roboto_32
+            text_color: 0xFFFFFF
+
+        - label:
+            id: living_1_page_label
+            align: top_mid
+            y: 40
+            text: "Living 1"
+            text_font: roboto_32
+            text_color: 0xFFFFFF
+
+      on_swipe_left:
+        - lambda: 'id(current_page) = 6;'
+        - lvgl.page.show:
+            id: clock_6_page
+            animation: OUT_LEFT
+
+      on_swipe_right:
+        - lambda: 'id(current_page) = 2;'
+        - lvgl.page.show:
+            id: living_2_page 
+            animation: OUT_RIGHT
