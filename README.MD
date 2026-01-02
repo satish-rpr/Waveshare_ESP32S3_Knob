@@ -1,3 +1,8 @@
+# Shout out to contributors of this project
+### [KrX3D](https://github.com/KrX3D/WaveShare-Knob-Esp32S3)
+### [marcinmajkowski44-ship-it](https://github.com/marcinmajkowski44-ship-it/ESP32S3-1.8-inch-JC3636K518C) (Most of the code in this repository is heavily influenced by his code)
+### [agillis](https://github.com/agillis/esphome-configs) (Goes by [andrew_NH](https://github.com/agillis/esphome-configs) in HA Community) for the clock
+### And most importantly [HA Community](https://community.home-assistant.io/)
 # 1.  Install ESPHome
 1.  Install Python 3.13.x . Current release of ESPHome is not comopatible with Python 3.14+
 2. Install `wheel` dependency: `pip3 install wheel`
